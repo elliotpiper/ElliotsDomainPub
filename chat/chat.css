@@ -1,0 +1,356 @@
+/* Elliot's Domain - Agentic Workflow panel.
+   Tokens match index.html so the panel reads as one app. --ink-soft is new:
+   --ink-faint sits at ~3.3:1 on this ground, fine for bold caps, too low for
+   body text. */
+
+:root{
+  --nc:#34d399;                      /* the node's accent */
+  --ink:#dff3fb;
+  --ink-soft:#93b8c8;                /* secondary transcript text, ~6:1 */
+  --ink-dim:#7fa6b8;
+  --ink-faint:#4d7488;               /* decoration only */
+  --line:rgba(120,220,255,.13);
+  --hud:rgba(6,32,46,.72);
+  --code-bg:rgba(2,14,22,.72);
+  --warn:#ffc478;
+  --warn-line:rgba(255,196,120,.42);
+  --warn-bg:rgba(255,196,120,.09);
+  --danger:#ff9b9b;
+  --danger-line:rgba(255,155,155,.42);
+  --ok:#7ee2b8;
+  --mono:"Cascadia Mono",ui-monospace,Consolas,monospace;
+  --pad:12px;
+  --gut:18px;
+}
+*{box-sizing:border-box}
+/* author display rules beat the UA sheet, so hidden needs saying out loud */
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0; display:flex; flex-direction:column;
+  background:linear-gradient(180deg,rgba(3,22,32,.98),rgba(2,14,22,1));
+  color:var(--ink); font:13.5px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  container-type:inline-size;
+}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-999px;top:0;z-index:9}
+.skip:focus{left:8px;top:6px;background:var(--nc);color:#04231a;padding:5px 9px;border-radius:6px}
+:focus-visible{outline:2px solid color-mix(in srgb,var(--nc) 75%,transparent);outline-offset:2px;border-radius:4px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* ---------------------------------------------------------------- top bar */
+.bar{
+  flex:none; display:flex; align-items:center; gap:8px; height:34px;
+  padding:0 8px 0 10px; border-bottom:1px solid var(--line);
+}
+.title{
+  display:flex; align-items:center; gap:7px; min-width:0; max-width:56%;
+  padding:4px 8px; border-radius:7px; font-size:12px; color:var(--ink);
+}
+.title:hover{background:rgba(140,230,255,.07)}
+.title .dot{width:7px;height:7px;border-radius:50%;background:var(--nc);
+  box-shadow:0 0 7px var(--nc);flex:none}
+.title #s-title-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.title .caret{color:var(--ink-faint);font-size:10px;flex:none}
+.status{
+  font:600 9px/1 "Segoe UI",system-ui; letter-spacing:.12em; text-transform:uppercase;
+  padding:4px 8px; border-radius:20px; white-space:nowrap;
+}
+.status[data-s="working"]{color:var(--nc);background:rgba(52,211,153,.12)}
+.status[data-s="waiting"]{color:var(--warn);background:var(--warn-bg)}
+.status[data-s="error"]{color:var(--danger);background:rgba(255,155,155,.1)}
+.flags{margin-left:auto;font-size:11px;color:var(--warn);padding:3px 7px;border-radius:6px;
+  border:1px solid var(--warn-line)}
+.newc{font-size:16px;line-height:1;color:var(--ink-dim);padding:2px 8px;border-radius:6px}
+.flags+.newc{margin-left:0}
+.status+.newc,.title+.newc{margin-left:auto}
+.newc:hover{color:var(--nc);background:rgba(52,211,153,.1)}
+
+/* ---------------------------------------------------------------- sticky */
+.sticky{
+  flex:none; padding:5px var(--pad); font-size:11px; color:var(--ink-soft);
+  border-bottom:1px solid var(--line); background:rgba(2,18,28,.75);
+  display:flex; gap:8px; align-items:center; white-space:nowrap; overflow:hidden;
+}
+.sticky b{color:var(--nc);font-weight:600}
+.sticky .t{font-variant-numeric:tabular-nums;color:var(--ink-faint);margin-left:auto}
+
+/* ---------------------------------------------------------------- scroll */
+.scroll{flex:1;overflow-y:auto;overflow-anchor:none;scrollbar-width:thin}
+.feed{padding:6px 0 14px}
+.jump{
+  position:fixed; right:14px; bottom:76px; z-index:5;
+  background:var(--hud); border:1px solid rgba(140,230,255,.3); color:var(--ink);
+  border-radius:20px; padding:6px 12px; font-size:11px;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);
+}
+
+/* ------------------------------------------------------------ transcript */
+.blk{
+  display:grid; grid-template-columns:var(--gut) 1fr; gap:0 8px;
+  padding:5px var(--pad);
+  content-visibility:auto; contain-intrinsic-size:auto 64px;
+  user-select:text;
+}
+.blk .gut{font:12px/1.6 var(--mono);color:var(--ink-faint);text-align:center}
+.blk .body{min-width:0}          /* stops long paths blowing the grid open */
+
+.blk-user .body{
+  background:color-mix(in srgb,var(--nc) 8%,transparent);
+  border-left:2px solid color-mix(in srgb,var(--nc) 55%,transparent);
+  border-radius:0 7px 7px 0; padding:7px 10px; white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+.blk-user .slash{font:600 12px/1 var(--mono);color:var(--nc);
+  background:rgba(52,211,153,.13);border-radius:5px;padding:3px 6px;margin-right:6px}
+
+.blk-text .body{color:var(--ink)}
+
+.blk-think .body{color:var(--ink-soft)}
+.blk-think summary{cursor:pointer;color:var(--ink-faint);font-size:11.5px;list-style:none}
+.blk-think summary::-webkit-details-marker{display:none}
+.blk-think .inner{border-left:1px solid var(--line);padding:5px 0 2px 9px;margin-top:5px;
+  font-style:italic;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12.5px}
+
+.blk-tool .thead{display:flex;gap:7px;align-items:baseline;min-width:0}
+.blk-tool .thead b{font-weight:600;font-size:12.5px;color:var(--ink)}
+.blk-tool .arg{font:12px/1.5 var(--mono);color:var(--ink-soft);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.blk-tool[data-state="running"] .gut{color:var(--nc)}
+.blk-tool[data-state="err"] .gut{color:var(--danger)}
+.blk-tool details{margin-top:3px}
+.blk-tool summary{cursor:pointer;font-size:11.5px;color:var(--ink-faint);list-style:none}
+.blk-tool summary::-webkit-details-marker{display:none}
+.blk-tool[data-state="err"] summary{color:var(--danger)}
+.blk-tool pre{margin:5px 0 0;padding:7px 9px;background:var(--code-bg);
+  border:1px solid var(--line);border-radius:6px;
+  font:12px/1.5 var(--mono);color:#cfeeff;white-space:pre-wrap;overflow-wrap:anywhere;
+  max-height:340px;overflow:auto}
+.cmdline{
+  position:relative; margin:5px 0 0; padding:7px 9px 7px 22px;
+  background:var(--code-bg); border:1px solid var(--line); border-radius:6px;
+  font:12.5px/1.55 var(--mono); color:#cfeeff;
+  white-space:pre-wrap; overflow-wrap:anywhere;
+}
+.cmdline::before{content:"$";position:absolute;left:9px;top:7px;color:var(--nc);opacity:.85}
+
+.blk-todo ul{margin:0;padding:0;list-style:none}
+.blk-todo li{display:grid;grid-template-columns:14px 1fr;gap:7px;padding:1px 0;
+  font-size:12.5px;color:var(--ink-soft)}
+.blk-todo li[data-s="completed"]{color:var(--ink-faint);text-decoration:line-through}
+.blk-todo li[data-s="in_progress"]{color:var(--ink)}
+.blk-todo li[data-s="in_progress"] .box{color:var(--nc)}
+
+.blk-result .body{border-top:1px solid var(--line);padding-top:5px;
+  font:10px/1.6 "Segoe UI",system-ui;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-faint);font-variant-numeric:tabular-nums}
+.blk-result[data-err="1"] .body{color:var(--danger)}
+
+.blk-gate .body{
+  border-left:2px solid var(--warn-line);
+  background:linear-gradient(90deg,var(--warn-bg),transparent 72%);
+  border-radius:0 8px 8px 0; padding:8px 11px;
+}
+.blk-gate b{color:var(--warn);font-size:12px}
+.blk-gate .grow{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.blk-gate .grow button{height:26px;padding:0 10px;border-radius:6px;font-size:11px;
+  border:1px solid var(--warn-line);color:var(--warn);background:rgba(255,196,120,.08)}
+
+.blk-note .body{color:var(--ink-faint);font-size:11.5px;font-style:italic}
+.blk-crash .body{border-left:2px solid var(--danger-line);padding:8px 11px;
+  background:rgba(255,155,155,.06);border-radius:0 8px 8px 0}
+.blk-crash b{color:var(--danger);font-size:12px}
+.blk-crash .acts{display:flex;gap:7px;margin-top:8px}
+.blk-crash .acts button{height:26px;padding:0 10px;border-radius:6px;font-size:11px;
+  border:1px solid var(--danger-line);color:var(--danger)}
+
+/* ---------------------------------------------------------- permissions */
+.perm{
+  margin:9px var(--pad); border:1px solid var(--warn-line); border-radius:10px;
+  background:linear-gradient(180deg,var(--warn-bg),rgba(6,32,46,.72));
+  padding:10px 12px; box-shadow:0 8px 24px rgba(0,0,0,.36); user-select:text;
+}
+.perm.flash{animation:pflash .9s ease-out}
+@keyframes pflash{from{border-color:var(--warn);box-shadow:0 0 0 3px rgba(255,196,120,.22)}}
+.perm header{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--warn)}
+.perm .pi{width:16px;height:16px;display:grid;place-items:center;border-radius:50%;
+  background:var(--warn);color:#2a1a02;font:700 11px/1 "Segoe UI"}
+.perm .tool{margin-left:auto;font:700 9px/1 "Segoe UI";letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-faint)}
+.perm .what{margin:7px 0 0;font-size:12px;color:var(--ink-soft)}
+.perm .danger{margin:7px 0 0;font-size:11px;color:var(--danger);
+  border:1px solid var(--danger-line);border-radius:6px;padding:5px 8px}
+.perm pre{margin:6px 0 0;padding:7px 9px;background:var(--code-bg);
+  border:1px solid var(--line);border-radius:6px;font:12.5px/1.55 var(--mono);
+  color:#cfeeff;white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto}
+.perm .acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.perm .acts button{height:29px;padding:0 12px;border-radius:7px;
+  font:600 11px/1 "Segoe UI",system-ui;text-transform:none}
+.perm .acts button[disabled]{opacity:.4;cursor:default}
+.perm .p-yes{background:var(--warn);border:1px solid var(--warn);color:#20160a}
+.perm .p-ses{background:rgba(255,196,120,.1);border:1px solid var(--warn-line);color:var(--warn)}
+.perm .p-no{background:rgba(255,155,155,.07);border:1px solid var(--danger-line);color:var(--danger);margin-left:auto}
+.perm .keys{margin:8px 0 0;font-size:10px;letter-spacing:.05em;color:var(--ink-faint)}
+.perm .sub{display:block;margin-top:3px;font-size:10px;color:var(--ink-faint);text-transform:none;letter-spacing:0}
+
+.permdone{margin:5px var(--pad);padding:4px 9px;font-size:11.5px;color:var(--ink-faint);
+  border-left:2px solid var(--line);user-select:text}
+.permdone[data-b="deny"]{border-left-color:var(--danger-line);color:var(--danger)}
+.permdone[data-b="allow-session"]{border-left-color:var(--warn-line)}
+.permdone code{font:11.5px/1.4 var(--mono);color:var(--ink-soft)}
+
+/* ------------------------------------------------------ question (AskUser) */
+.qcard{margin:9px var(--pad);border:1px solid rgba(140,230,255,.26);border-radius:10px;
+  background:var(--hud);padding:10px 12px;user-select:text}
+.qcard .qh{font:700 9px/1 "Segoe UI";letter-spacing:.13em;text-transform:uppercase;
+  color:var(--nc);margin-bottom:5px}
+.qcard .qq{font-size:12.5px;color:var(--ink);margin:0 0 7px}
+.qcard label{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:7px;
+  border:1px solid var(--line);margin-bottom:5px;cursor:pointer}
+.qcard label:hover{border-color:color-mix(in srgb,var(--nc) 50%,transparent)}
+.qcard label b{font-size:12px;font-weight:600}
+.qcard label span{display:block;font-size:11.5px;color:var(--ink-soft)}
+.qcard input[type=text]{width:100%;background:var(--code-bg);border:1px solid var(--line);
+  border-radius:6px;padding:6px 8px;color:var(--ink);font:12.5px/1.4 "Segoe UI",system-ui}
+.qcard .qacts{display:flex;gap:7px;margin-top:9px}
+.qcard .qgo{height:28px;padding:0 13px;border-radius:7px;background:var(--nc);color:#04231a;
+  font:600 11px/1 "Segoe UI"}
+.qcard .qskip{height:28px;padding:0 11px;border-radius:7px;border:1px solid var(--line);
+  color:var(--ink-dim);font:600 11px/1 "Segoe UI"}
+
+/* ----------------------------------------------------------- markdown */
+.md p{margin:0 0 8px}
+.md p:last-child{margin-bottom:0}
+.md h1,.md h2,.md h3,.md h4{margin:14px 0 6px;line-height:1.3;font-weight:700}
+.md h1{font-size:17px}.md h2{font-size:15px}.md h3{font-size:13.5px}.md h4{font-size:12.5px;color:var(--ink-soft)}
+.md ul,.md ol{margin:0 0 8px;padding-left:20px}
+.md li{margin:2px 0}
+.md blockquote{margin:0 0 8px;padding:2px 0 2px 10px;border-left:2px solid var(--line);color:var(--ink-soft)}
+.md hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.md a{color:var(--nc);text-decoration:none;border-bottom:1px dotted color-mix(in srgb,var(--nc) 60%,transparent)}
+.md code{font:12px/1.4 var(--mono);background:rgba(140,230,255,.09);border-radius:4px;padding:1px 4px}
+.md del{color:var(--ink-faint)}
+.md strong{font-weight:700}
+.md .tail{margin:0;font:inherit;white-space:pre-wrap;overflow-wrap:anywhere}
+.caret{display:inline-block;width:6px;height:1.05em;vertical-align:-2px;margin-left:1px;
+  background:var(--nc);animation:cc 1.05s steps(1) infinite}
+@keyframes cc{50%{opacity:0}}
+
+.md-code{border:1px solid var(--line);border-radius:8px;background:var(--code-bg);margin:9px 0}
+.md-code>header{display:flex;align-items:center;gap:8px;height:25px;padding:0 6px 0 10px;
+  border-bottom:1px solid var(--line);font:700 9px/1 "Segoe UI";letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-faint)}
+.md-code>header button{margin-left:auto;font:700 9px/1 "Segoe UI";letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-dim);padding:3px 6px;border-radius:5px}
+.md-code>header button:hover{color:var(--nc);background:rgba(52,211,153,.1)}
+.md-code pre{margin:0;padding:9px 11px;font:12px/1.55 var(--mono);color:#cfeeff;
+  white-space:pre;overflow-x:auto;overscroll-behavior-x:contain}
+.md-code.clamped pre{max-height:calc(24 * 1.55 * 12px);overflow:hidden}
+.md-code .more{display:block;width:100%;padding:6px;font-size:11px;color:var(--nc);
+  border-top:1px solid var(--line)}
+
+.md-tablewrap{overflow-x:auto;margin:0 0 9px}
+.md table{border-collapse:collapse;font-size:12.5px;min-width:100%}
+.md th,.md td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+.md th{background:rgba(140,230,255,.05);font-weight:600;white-space:nowrap}
+
+/* -------------------------------------------------------------- states */
+.state{max-width:340px;margin:26px auto;padding:0 var(--pad);text-align:center}
+.state .ring{width:32px;height:32px;margin:0 auto 12px;border-radius:50%;
+  border:2px solid rgba(140,230,255,.16);border-top-color:var(--nc);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.state h2{margin:0 0 6px;font-size:13.5px;font-weight:600;color:var(--ink)}
+.state p{margin:0 0 9px;font-size:12px;color:var(--ink-soft);line-height:1.55}
+.state .warnmark{font-size:20px;color:var(--warn);display:block;margin-bottom:8px}
+.state code{display:block;font:11.5px/1.5 var(--mono);background:var(--code-bg);
+  border:1px solid var(--line);border-radius:6px;padding:7px 9px;margin:8px 0;
+  color:#cfeeff;white-space:pre-wrap;overflow-wrap:anywhere;text-align:left;user-select:text}
+.state .btns{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+.state .btns button{height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line);
+  font:600 11px/1 "Segoe UI";color:var(--ink-dim)}
+.state .btns button:hover{border-color:var(--nc);color:var(--nc)}
+
+.sc{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;
+  padding:9px 11px;border-radius:9px;background:var(--hud);border:1px solid var(--line);
+  margin-bottom:7px}
+.sc:hover{border-color:color-mix(in srgb,var(--nc) 55%,transparent)}
+.sc .cmd{font:600 12.5px/1 var(--mono);color:var(--nc)}
+.sc .kick{font:700 9px/1 "Segoe UI";letter-spacing:.14em;color:var(--ink-faint);align-self:center}
+.sc .out{grid-column:1/-1;font-size:11.5px;color:var(--ink-soft);line-height:1.45;margin-top:3px}
+.sc .gates{grid-column:1/-1;font-size:10px;letter-spacing:.05em;color:var(--ink-faint);margin-top:2px}
+
+/* ---------------------------------------------------------------- dock */
+.dock{flex:none;padding:0 0 8px}
+.nudge{margin:0 var(--pad) 7px;padding:6px 10px;border-radius:8px;font-size:11.5px;
+  border:1px solid var(--warn-line);background:var(--warn-bg);color:var(--warn);
+  display:flex;gap:8px;align-items:center;cursor:pointer}
+.queued{margin:0 var(--pad) 7px;padding:5px 9px;border:1px dashed var(--line);
+  border-radius:8px;font-size:11.5px;color:var(--ink-soft);display:flex;gap:8px;align-items:center}
+.queued button{margin-left:auto;color:var(--ink-faint)}
+.composer{
+  display:flex; align-items:flex-end; gap:8px; margin:0 var(--pad);
+  background:var(--hud); border:1px solid rgba(140,230,255,.22); border-radius:12px;
+  padding:6px 7px 6px 8px;
+}
+.composer:focus-within{border-color:rgba(140,230,255,.5);box-shadow:0 0 0 3px rgba(90,210,255,.08)}
+.composer textarea{
+  flex:1; min-width:0; background:none; border:0; outline:none; resize:none;
+  color:var(--ink); font:13.5px/1.5 "Segoe UI",system-ui;
+  field-sizing:content; min-height:22px; max-height:34vh; padding:2px 0;
+}
+.composer textarea::placeholder{color:var(--ink-faint)}
+.c-slash{width:26px;height:26px;border-radius:7px;color:var(--ink-faint);
+  font:600 13px/1 var(--mono);flex:none}
+.c-slash:hover{color:var(--nc);background:rgba(52,211,153,.1)}
+.c-send{width:30px;height:26px;border-radius:7px;background:var(--nc);color:#04231a;
+  font-size:13px;flex:none}
+.c-send[data-stop="1"]{background:var(--danger);color:#2a0d0d}
+.c-send[disabled]{opacity:.35;cursor:default}
+
+/* -------------------------------------------------------------- drawer */
+.drawer{position:fixed;inset:0;z-index:20}
+.dr-scrim{position:absolute;inset:0;background:rgba(1,10,16,.55)}
+.dr-panel{position:absolute;left:0;top:0;bottom:0;width:min(288px,80%);z-index:1;
+  background:linear-gradient(180deg,rgba(4,26,38,.99),rgba(2,14,22,1));
+  border-right:1px solid var(--line);display:flex;flex-direction:column;
+  box-shadow:14px 0 34px rgba(0,0,0,.45)}
+.dr-head{display:flex;align-items:center;height:34px;padding:0 8px 0 12px;
+  border-bottom:1px solid var(--line);font-size:12px}
+.dr-head button{margin-left:auto;color:var(--ink-faint);padding:4px 7px;border-radius:6px}
+.dr-new{margin:8px 10px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
+  color:var(--nc);font-size:12px;text-align:left}
+.dr-new:hover{border-color:var(--nc);background:rgba(52,211,153,.08)}
+.dr-list{flex:1;overflow-y:auto;padding:0 8px 10px}
+.dr-row{display:block;width:100%;text-align:left;padding:7px 9px;border-radius:8px;
+  border:1px solid transparent}
+.dr-row:hover{background:rgba(140,230,255,.06)}
+.dr-row[aria-current="true"]{border-color:color-mix(in srgb,var(--nc) 45%,transparent);
+  background:rgba(52,211,153,.07)}
+.dr-row .t{display:block;font-size:12px;color:var(--ink);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.dr-row .m{display:block;font-size:10.5px;color:var(--ink-faint);margin-top:2px}
+.dr-empty{padding:14px 10px;font-size:11.5px;color:var(--ink-faint);text-align:center}
+
+/* ----------------------------------------------------------- slash menu */
+.slashmenu{position:fixed;left:var(--pad);right:var(--pad);bottom:58px;z-index:15;
+  background:linear-gradient(180deg,rgba(4,26,38,.99),rgba(2,14,22,.99));
+  border:1px solid rgba(140,230,255,.28);border-radius:10px;padding:6px;
+  box-shadow:0 -8px 28px rgba(0,0,0,.45);max-height:52vh;overflow-y:auto}
+.slashmenu .row{display:grid;grid-template-columns:1fr auto;gap:1px 10px;width:100%;
+  text-align:left;padding:7px 9px;border-radius:8px}
+.slashmenu .row[aria-selected="true"]{background:rgba(52,211,153,.1)}
+.slashmenu .row .cmd{font:600 12px/1 var(--mono);color:var(--nc)}
+.slashmenu .row .kick{font:700 9px/1 "Segoe UI";letter-spacing:.13em;color:var(--ink-faint)}
+.slashmenu .row .out{grid-column:1/-1;font-size:11px;color:var(--ink-soft);margin-top:2px}
+
+@container (max-width:470px){
+  .perm .acts button{flex:1 1 auto}
+  .perm .p-no{margin-left:0}
+}
+@media (prefers-contrast:more){
+  :root{--line:rgba(120,220,255,.28);--ink-soft:#b8d8e6}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}

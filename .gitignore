@@ -1,0 +1,19 @@
+# Electron and its per-platform binary - reinstall with:
+#   npm install --omit=optional
+node_modules/
+
+# runtime state, never source
+.port
+chat/state.json
+*.log
+
+# build output, if electron-builder is ever added
+dist/
+out/
+
+# Windows / editor cruft
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

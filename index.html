@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Elliot's Domain</title>
+<style>
+  :root{
+    --panel-w:clamp(400px, 46%, 880px);
+    --ink:#dff3fb; --ink-dim:#7fa6b8; --ink-faint:#4d7488;
+    --line:rgba(120,220,255,.13);
+    --hud:rgba(6,32,46,.72);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; overflow:hidden; color:var(--ink);
+    background:radial-gradient(120% 90% at 50% 45%, #0b5670 0%, #05374b 38%, #02202e 68%, #010d15 100%);
+    font:14px/1.4 "Segoe UI",system-ui,-apple-system,sans-serif;
+    user-select:none; -webkit-font-smoothing:antialiased;
+  }
+  #stars{position:fixed;inset:0;pointer-events:none;opacity:.75}
+
+  /* ---------- HUD ---------- */
+  .hud{
+    position:fixed; left:0; right:0; top:0; height:46px; z-index:40;
+    display:flex; align-items:center; gap:26px; padding:0 150px 0 22px;
+    -webkit-app-region:drag;   /* this strip is the window title bar */
+    background:linear-gradient(180deg,rgba(2,18,28,.85),rgba(2,18,28,0));
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  }
+  .hud .brand{display:flex;align-items:baseline;gap:9px;font-weight:700;letter-spacing:.2em;color:#8fe6ff}
+  .hud .brand small{font-weight:400;letter-spacing:.16em;color:var(--ink-faint)}
+  .hud .stat{display:flex;align-items:baseline;gap:7px;color:var(--ink-faint)}
+  .hud .stat b{font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--ink)}
+  .hud .spacer{flex:1}
+  .hud .clock{font-variant-numeric:tabular-nums;color:var(--ink-dim);letter-spacing:.1em}
+  .node,.cmd,.col,.rcard,.foot button,.help,.menu{-webkit-app-region:no-drag}
+
+  /* ---------- stage ---------- */
+  #stage{position:fixed;inset:0;z-index:10}
+  #web{position:absolute;inset:0;width:100%;height:100%}
+  #web circle.ring{fill:none;stroke:var(--line);stroke-width:1}
+  #web line.spoke{stroke:rgba(120,220,255,.10);stroke-width:1}
+  #web line.spoke.on{stroke:var(--nc,#7fe8ff);stroke-width:1.6;filter:drop-shadow(0 0 6px var(--nc,#7fe8ff))}
+
+  .sweep{
+    position:absolute; border-radius:50%; pointer-events:none; z-index:11;
+    background:conic-gradient(from 0deg,
+      rgba(125,230,255,.20) 0deg, rgba(125,230,255,.06) 12deg,
+      rgba(125,230,255,0) 26deg, rgba(125,230,255,0) 360deg);
+    -webkit-mask:radial-gradient(closest-side,#000 30%,rgba(0,0,0,.55) 70%,transparent 100%);
+    mask:radial-gradient(closest-side,#000 30%,rgba(0,0,0,.55) 70%,transparent 100%);
+    animation:sweep 14s linear infinite;
+  }
+  @keyframes sweep{
+    from{transform:translate(-50%,-50%) rotate(0deg)}
+    to{transform:translate(-50%,-50%) rotate(360deg)}
+  }
+
+  /* ---------- core ---------- */
+  .core{position:absolute; z-index:20; transform:translate(-50%,-50%); display:grid; place-items:center}
+  .core .orb{
+    position:relative; width:104px; height:104px; border-radius:50%;
+    background:radial-gradient(circle at 42% 36%, #a9f2ff 0%, #34c5e8 34%, #0d6f96 68%, #073a52 100%);
+    box-shadow:0 0 26px rgba(80,220,255,.55), 0 0 70px rgba(40,170,220,.35), inset 0 0 22px rgba(255,255,255,.25);
+    animation:breathe 5.5s ease-in-out infinite;
+  }
+  @keyframes breathe{
+    0%,100%{box-shadow:0 0 26px rgba(80,220,255,.5),0 0 70px rgba(40,170,220,.3),inset 0 0 22px rgba(255,255,255,.25)}
+    50%{box-shadow:0 0 34px rgba(120,240,255,.75),0 0 108px rgba(40,190,235,.45),inset 0 0 26px rgba(255,255,255,.35)}
+  }
+  .core .halo{
+    position:absolute; left:50%; top:50%; width:170px; height:74px; margin:-37px 0 0 -85px;
+    border:1px solid rgba(150,240,255,.4); border-radius:50%;
+  }
+  .core .halo:nth-of-type(2){transform:rotate(60deg)}
+  .core .halo:nth-of-type(3){transform:rotate(-60deg)}
+  .core .name{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    font-size:10px; font-weight:700; letter-spacing:.16em; line-height:1.55;
+    text-align:center; text-transform:uppercase; white-space:nowrap; color:#eafcff;
+    text-shadow:0 0 10px rgba(0,40,60,.95); pointer-events:none;
+  }
+
+  /* ---------- nodes ---------- */
+  .node{
+    position:absolute; z-index:25; transform:translate(-50%,-50%);
+    display:grid; justify-items:center; gap:9px; width:150px;
+    cursor:pointer; background:none; border:0; padding:0; color:inherit; font:inherit;
+    transition:transform .18s cubic-bezier(.2,.8,.3,1), opacity .18s ease;
+  }
+  .hex{
+    position:relative; width:66px; height:74px; display:grid; place-items:center;
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    background:linear-gradient(160deg, color-mix(in srgb,var(--nc) 40%, #062736), color-mix(in srgb,var(--nc) 14%, #041c28));
+    box-shadow:0 0 20px color-mix(in srgb,var(--nc) 45%, transparent);
+    transition:box-shadow .2s ease;
+  }
+  .hex::before{
+    content:""; position:absolute; inset:2px;
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    background:linear-gradient(160deg,#0a3243 0%,#04202c 100%);
+  }
+  .hex svg{
+    position:relative; z-index:2; width:28px; height:28px; color:var(--nc); stroke:var(--nc); fill:none;
+    stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;
+    filter:drop-shadow(0 0 6px color-mix(in srgb,var(--nc) 70%, transparent));
+  }
+  .label{text-align:center;line-height:1.25}
+  .label .t{display:block;font-size:12px;font-weight:600;letter-spacing:.06em;color:#e8f8ff;
+            text-shadow:0 1px 8px rgba(0,20,30,.9)}
+  .label .s{display:block;margin-top:3px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+  .label .s::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+                    background:var(--nc);margin-right:6px;vertical-align:middle;box-shadow:0 0 6px var(--nc)}
+
+  .node:hover,.node:focus-visible{transform:translate(-50%,-50%) scale(1.09);outline:none}
+  .node:hover .hex,.node:focus-visible .hex{box-shadow:0 0 34px color-mix(in srgb,var(--nc) 80%, transparent)}
+  .node:hover .label .s,.node:focus-visible .label .s{color:var(--nc)}
+  .node.dim{opacity:.2}
+  .node.hit .hex{animation:hit .6s ease-out}
+  @keyframes hit{
+    0%{box-shadow:0 0 0 color-mix(in srgb,var(--nc) 90%,transparent)}
+    45%{box-shadow:0 0 60px 10px color-mix(in srgb,var(--nc) 90%,transparent)}
+    100%{box-shadow:0 0 20px color-mix(in srgb,var(--nc) 45%,transparent)}
+  }
+  .key{
+    position:absolute; top:6px; right:11px; z-index:3; width:15px; height:15px;
+    display:grid; place-items:center; border-radius:4px; font-size:9px; font-weight:700;
+    color:#02202c; background:var(--nc); opacity:0; transition:opacity .15s ease;
+  }
+  .node:hover .key{opacity:.92}
+
+  /* ---------- preview columns ----------
+     Two columns of up to two slots each, with the constellation between them.
+     A column with one slot gives it the full height; two split it. */
+  :root{ --cw-left:380px; --cw-right:380px; }
+  .col{
+    position:fixed; top:0; bottom:0; width:0; z-index:35;
+    display:flex; flex-direction:column; overflow:hidden;
+    transition:width .26s cubic-bezier(.2,.8,.3,1);
+  }
+  .col{container-type:inline-size}
+  #col-left{left:0}
+  #col-right{right:0}
+  body.has-left  #col-left {width:var(--cw-left);  border-right:1px solid rgba(140,230,255,.16);
+                            box-shadow:18px 0 50px rgba(0,0,0,.45)}
+  body.has-right #col-right{width:var(--cw-right); border-left:1px solid rgba(140,230,255,.16);
+                            box-shadow:-18px 0 50px rgba(0,0,0,.45)}
+  body.dragging .col{transition:none}
+
+  /* ---------- resize grips ----------
+     They live in the centre strip, never over a column: a preview composites
+     above the page, so a grip inside a column would be buried under it and
+     would never see a click. */
+  .grip{
+    position:fixed; top:0; bottom:0; width:10px; z-index:44; display:none;
+    cursor:col-resize; -webkit-app-region:no-drag;
+  }
+  body.has-left  #grip-left {display:block; left:var(--cw-left)}
+  body.has-right #grip-right{display:block; right:var(--cw-right)}
+  .grip::after{
+    content:""; position:absolute; top:0; bottom:0; left:4px; width:2px;
+    background:rgba(140,230,255,.18); border-radius:2px;
+    transition:background .14s ease;
+  }
+  .grip:hover::after,body.dragging .grip::after{background:var(--nc,#7fe8ff);
+    box-shadow:0 0 9px color-mix(in srgb,var(--nc,#7fe8ff) 70%,transparent)}
+
+  .slot{
+    flex:1 1 0; min-height:0; display:flex; flex-direction:column; overflow:hidden;
+    background:linear-gradient(180deg,rgba(3,22,32,.96),rgba(2,14,22,.98));
+  }
+  .slot + .slot{border-top:1px solid rgba(140,230,255,.16)}
+  .hud,.foot{transition:left .26s cubic-bezier(.2,.8,.3,1), right .26s cubic-bezier(.2,.8,.3,1)}
+  body.dragging .hud,body.dragging .foot{transition:none}
+  body.has-left  .hud,body.has-left  .foot{left:var(--cw-left)}
+  body.has-right .hud,body.has-right .foot{right:var(--cw-right)}
+  /* the caption buttons sit over the right column when it is open */
+  body.has-right .hud{padding-right:22px}
+
+  .slot .phead{
+    flex:none; display:flex; align-items:center; gap:9px; height:34px; padding:0 8px 0 12px;
+    border-bottom:1px solid rgba(140,230,255,.13); white-space:nowrap;
+  }
+  /* only the slot that touches the top-right corner has to clear them */
+  body.has-right #col-right .slot:first-child .phead{height:46px; padding-right:150px;
+                                                     -webkit-app-region:drag}
+  body.has-right #col-right .slot:first-child .phead button{-webkit-app-region:no-drag}
+  /* the 150px reservation would otherwise eat the buttons in a narrow column:
+     put the flexible gap AFTER them so it absorbs the squeeze, not they do */
+  body.has-right #col-right .slot:first-child .phead .pspace{order:2}
+  /* the sub-label is the first thing to go when a column gets tight */
+  @container (max-width:430px){ .slot .psub{display:none} }
+  .slot .dot{width:7px;height:7px;border-radius:50%;background:var(--nc,#7fe8ff);
+             box-shadow:0 0 8px var(--nc,#7fe8ff);flex:none}
+  .slot .ptitle{font-size:12px;font-weight:600;letter-spacing:.05em;color:#e8f8ff;
+                overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .slot .psub{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+  .slot .pspace{flex:1}
+  .slot .phead button{
+    flex:none; height:22px; padding:0 8px; border-radius:6px; cursor:pointer;
+    background:rgba(140,230,255,.08); border:1px solid rgba(140,230,255,.18);
+    color:var(--ink-dim); font:600 9px/1 "Segoe UI",system-ui;
+    letter-spacing:.1em; text-transform:uppercase;
+  }
+  .slot .phead button:hover{background:rgba(140,230,255,.16);border-color:rgba(140,230,255,.4);color:#eafcff}
+  .slot .pbody{flex:1;position:relative;display:grid;place-items:center;background:#02202e;min-height:0}
+  .slot .pstate{text-align:center;padding:16px;max-width:300px}
+  .slot .pstate .ring{
+    width:30px;height:30px;margin:0 auto 12px;border-radius:50%;
+    border:2px solid rgba(140,230,255,.16); border-top-color:var(--nc,#7fe8ff);
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .slot .pstate p{margin:0;font-size:11px;letter-spacing:.06em;color:var(--ink-dim);line-height:1.6}
+  .slot .pstate small{display:block;margin-top:8px;font-size:10px;color:var(--ink-faint)}
+  .slot.ready .pstate{display:none}
+
+  /* ---------- placement menu ---------- */
+  .menu{
+    position:fixed; z-index:60; width:392px; padding:11px;
+    background:linear-gradient(180deg,rgba(6,30,43,.98),rgba(2,14,22,.99));
+    border:1px solid rgba(140,230,255,.28); border-radius:14px;
+    box-shadow:0 18px 52px rgba(0,0,0,.6);
+  }
+  .menu .mhead{display:flex;align-items:baseline;gap:8px;padding:1px 3px 10px}
+  .menu .mdot{width:8px;height:8px;border-radius:50%;background:var(--nc,#7fe8ff);
+              box-shadow:0 0 8px var(--nc,#7fe8ff);align-self:center;flex:none}
+  .menu .mtitle{font-size:12.5px;font-weight:600;color:#eafcff}
+  .menu .msub{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint)}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .mcard{
+    display:block; width:100%; text-align:left; padding:0; cursor:pointer; overflow:hidden;
+    background:rgba(2,16,25,.9); border:2px solid transparent;
+    outline:1px solid rgba(140,230,255,.16); outline-offset:-1px;
+    border-radius:10px; transition:border-color .14s ease, background .14s ease;
+  }
+  .mcard:hover,.mcard:focus-visible{border-color:#3aa0ff;outline-color:transparent}
+  .mcard[data-occupied="1"]{background:rgba(6,30,43,.95)}
+  .mcard .ch{display:flex;align-items:center;gap:7px;padding:7px 9px}
+  .mcard .cicon{
+    width:17px;height:17px;flex:none;border-radius:5px;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--cc,#4d7488) 30%, #062736);
+  }
+  .mcard .cicon svg{width:11px;height:11px;stroke:var(--cc,#7fa6b8);fill:none;stroke-width:2}
+  .mcard .cname{font-size:11.5px;color:#e8f8ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mcard[data-occupied="0"] .cname{color:var(--ink-faint)}
+  .mcard .cpos{margin-left:auto;font:700 8px/1 "Segoe UI";letter-spacing:.12em;
+               text-transform:uppercase;color:var(--ink-faint);flex:none}
+  .mcard .cthumb{
+    height:84px; margin:0 7px 7px; border-radius:6px; overflow:hidden;
+    background:#02202e; border:1px solid rgba(140,230,255,.1);
+    display:grid; place-items:center;
+  }
+  .mcard .cthumb img{width:100%;height:100%;object-fit:cover;object-position:top left;display:block}
+  /* empty slot: a little diagram of where this preview would land */
+  .mcard .cmap{width:52px;height:34px;display:grid;grid-template-columns:1fr 1fr 1fr;
+               grid-template-rows:1fr 1fr;gap:2px}
+  .mcard .cmap i{background:rgba(140,230,255,.09);border-radius:2px}
+  .mcard .cmap i.mid{grid-row:1/3;background:rgba(140,230,255,.05)}
+  .mcard .cmap i.on{background:var(--nc,#7fe8ff);box-shadow:0 0 7px var(--nc,#7fe8ff)}
+  .menu .mfoot{display:flex;gap:7px;margin-top:10px}
+  .menu .mbtn{
+    flex:1; height:27px; border-radius:7px; cursor:pointer;
+    background:rgba(140,230,255,.07); border:1px solid rgba(140,230,255,.18);
+    color:var(--ink-dim); font:600 10px/1 "Segoe UI"; letter-spacing:.08em; text-transform:uppercase;
+  }
+  .menu .mbtn:hover{color:#eafcff;border-color:rgba(140,230,255,.45)}
+  .menu .mbtn.danger:hover{color:#ff9b9b;border-color:rgba(255,155,155,.45)}
+
+  /* ---------- footer ---------- */
+  .foot{
+    position:fixed; left:0; right:0; bottom:0; z-index:40; padding:0 22px 18px;
+    display:flex; align-items:flex-end; justify-content:space-between; gap:18px;
+    background:linear-gradient(0deg,rgba(2,18,28,.9),rgba(2,18,28,0));
+  }
+  .helpbtn{
+    flex:none; width:30px; height:30px; border-radius:50%; cursor:pointer;
+    background:var(--hud); border:1px solid rgba(140,230,255,.22);
+    color:var(--ink-dim); font:600 14px/1 "Segoe UI",system-ui; backdrop-filter:blur(9px);
+    transition:border-color .16s ease, color .16s ease, background .16s ease;
+  }
+  .helpbtn:hover,.helpbtn[aria-expanded="true"]{
+    border-color:rgba(140,230,255,.5); color:#eafcff; background:rgba(140,230,255,.14);
+  }
+
+  /* search + shortcut reference, anchored above the help button */
+  .help{
+    position:fixed; left:22px; bottom:60px; z-index:45; width:min(430px,calc(100vw - 44px));
+    background:linear-gradient(180deg,rgba(4,26,38,.97),rgba(2,16,25,.98));
+    border:1px solid rgba(140,230,255,.26); border-radius:12px; padding:12px;
+    box-shadow:0 14px 40px rgba(0,0,0,.5); backdrop-filter:blur(10px);
+  }
+  .cmd{
+    display:flex; align-items:center; gap:11px;
+    background:rgba(2,14,22,.6); border:1px solid rgba(140,230,255,.22); border-radius:999px;
+    padding:9px 14px; transition:border-color .18s ease, box-shadow .18s ease;
+  }
+  .cmd:focus-within{border-color:rgba(140,230,255,.55);box-shadow:0 0 0 3px rgba(90,210,255,.10)}
+  .cmd svg{width:15px;height:15px;stroke:var(--ink-faint);fill:none;stroke-width:1.8;flex:none}
+  .cmd input{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--ink);
+             font:13px/1 "Segoe UI",system-ui,sans-serif}
+  .cmd input::placeholder{color:var(--ink-faint)}
+  .cmd .enter{font-size:9px;letter-spacing:.1em;color:var(--ink-faint);border:1px solid rgba(140,230,255,.18);
+              border-radius:4px;padding:3px 6px;flex:none}
+  .help .keys{
+    display:grid; grid-template-columns:auto 1fr; gap:5px 14px; margin:12px 2px 2px;
+    font-size:11px; color:var(--ink-faint);
+  }
+  .help .keys dt{justify-self:start;white-space:nowrap;color:var(--ink-dim)}
+  .help .keys dd{margin:0;color:var(--ink-faint)}
+  .help kbd{font:inherit;background:rgba(140,230,255,.12);border:1px solid rgba(140,230,255,.2);
+            border-radius:4px;padding:1px 5px;color:var(--ink-dim);margin:0 1px}
+  .recent{display:flex;gap:10px;padding-bottom:2px}
+  .rcard{
+    width:134px; padding:8px 10px; border-radius:9px; text-align:left;
+    background:var(--hud); border:1px solid rgba(140,230,255,.14);
+    backdrop-filter:blur(9px); cursor:pointer; color:inherit; font:inherit;
+    transition:border-color .16s ease, transform .16s ease;
+  }
+  .rcard:hover{border-color:color-mix(in srgb,var(--nc) 60%, transparent);transform:translateY(-2px)}
+  .rcard .rt{display:block;font-size:11px;font-weight:600;color:#dff3fb;white-space:nowrap;
+             overflow:hidden;text-overflow:ellipsis}
+  .rcard .rt::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+                     background:var(--nc);margin-right:6px;vertical-align:middle;box-shadow:0 0 6px var(--nc)}
+  .rcard .rs{display:block;margin-top:3px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+  .recent .empty{color:var(--ink-faint);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:12px 0}
+  body.has-right .recent{display:none}       /* the right column takes that space */
+
+  /* ---------- toast ---------- */
+  #toast{
+    position:fixed; left:50%; bottom:88px; z-index:60; transform:translate(-50%,10px);
+    padding:9px 16px; border-radius:999px; font-size:12px; letter-spacing:.04em;
+    background:rgba(4,26,38,.94); border:1px solid rgba(140,230,255,.28); color:var(--ink);
+    box-shadow:0 10px 30px rgba(0,0,0,.5); opacity:0; pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease; white-space:nowrap; max-width:70vw;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #toast.err{border-color:rgba(255,140,140,.5);color:#ffd8d8}
+
+  @media (max-height:640px){ .label .s{display:none} .hex{width:56px;height:63px} }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+
+<header class="hud">
+  <span class="brand">ELLIOT&rsquo;S DOMAIN</span>
+  <span class="stat"><b id="d-day">--</b> <span id="d-mon"></span></span>
+  <span class="spacer"></span>
+  <span class="clock" id="clock">--:--</span>
+</header>
+
+<main id="stage">
+  <svg id="web"></svg>
+  <div class="sweep" id="sweep"></div>
+  <div class="core" id="core">
+    <div class="orb"></div>
+    <span class="halo"></span><span class="halo"></span><span class="halo"></span>
+    <span class="name">Elliot&rsquo;s<br>Domain</span>
+  </div>
+</main>
+
+<footer class="foot">
+  <button id="helpbtn" class="helpbtn" aria-haspopup="dialog" aria-expanded="false"
+          aria-controls="help" title="Search and shortcuts (/)">?</button>
+  <div class="recent" id="recent"></div>
+</footer>
+
+<div id="help" class="help" hidden role="dialog" aria-modal="false" aria-label="Search and shortcuts">
+  <div class="cmd">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+    <input id="q" type="text" placeholder="Find a node &mdash; board, terminal, confluence, figma, excel&hellip;" autocomplete="off" spellcheck="false">
+    <span class="enter">ENTER</span>
+  </div>
+  <dl class="keys">
+    <dt>Click</dt><dd>preview in the panel</dd>
+    <dt><kbd>Ctrl</kbd>+click</dt><dd>open in its own window</dd>
+    <dt><kbd>1</kbd>&ndash;<kbd>6</kbd></dt><dd>launch a node by number</dd>
+    <dt><kbd>/</kbd></dt><dd>open this panel and search</dd>
+    <dt>Drag the edge</dt><dd>resize a column (double-click it to reset)</dd>
+    <dt>Right-click a node</dt><dd>choose which of the four slots it opens in</dd>
+    <dt>Right-click elsewhere</dt><dd>close every open preview</dd>
+    <dt><kbd>Esc</kbd></dt><dd>close this, or the preview</dd>
+  </dl>
+</div>
+
+<div class="grip" id="grip-left" data-side="left" role="separator"
+     aria-orientation="vertical" aria-label="Resize the left previews" tabindex="0"></div>
+<div class="grip" id="grip-right" data-side="right" role="separator"
+     aria-orientation="vertical" aria-label="Resize the right previews" tabindex="0"></div>
+
+<aside class="col" id="col-left" data-side="left"></aside>
+<aside class="col" id="col-right" data-side="right"></aside>
+
+<div id="menu" class="menu" hidden role="menu" aria-label="Place this preview">
+  <div class="mhead">
+    <span class="mdot"></span>
+    <span class="mtitle">Node</span>
+    <span class="msub">place preview</span>
+  </div>
+  <div class="mgrid" id="mgrid"></div>
+  <div class="mfoot">
+    <button id="m-pop" class="mbtn">Open outside the app</button>
+    <button id="m-clear" class="mbtn danger" hidden>Close all previews</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const ICON = {
+  board:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/><path d="M5.5 8h1.5M11.5 8h1.5M17.5 8h1.5"/>',
+  term:'<rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M7 9.5l3 2.5-3 2.5M12.5 15h4.5"/>',
+  /* three cascading tiles, notched where they overlap - after the Jira mark */
+  jira:'<g fill="currentColor" stroke="none">' +
+       '<path d="M13 1 H23 V11 H18 A5 5 0 0 1 13 6 Z" opacity=".95"/>' +
+       '<path d="M7 7 H12 V12 H17 V17 H12 A5 5 0 0 1 7 12 Z" opacity=".8"/>' +
+       '<path d="M1 13 H6 V18 H11 V23 H6 A5 5 0 0 1 1 18 Z" opacity=".62"/></g>',
+  conf:'<path d="M3 16.4c2.6-4.5 4.6-6.6 7-6.2 2 .3 2.9 2.2 5 2.5 1.9.3 3.5-.8 6-4.1"/><path d="M21 12.2c-2.6 4.5-4.6 6.6-7 6.2-2-.3-2.9-2.2-5-2.5-1.9-.3-3.5.8-6 4.1"/>',
+  figma:'<circle cx="9" cy="5" r="2.8"/><circle cx="9" cy="12" r="2.8"/><circle cx="9" cy="19" r="2.8"/><circle cx="14.8" cy="8.5" r="2.8"/>',
+  excel:'<rect x="3" y="3.5" width="18" height="17" rx="2"/><path d="M3 8.5h18M9 8.5v12"/><path d="M12.6 12l4.8 5M17.4 12l-4.8 5"/>'
+};
+
+const NODES = [
+  {id:'jira-board', name:"My Jira Board", sub:'local app', color:'#22d3ee', icon:'board',
+   keys:'jira board tickets kanban backlog ideas local artifact mine'},
+  {id:'jira-wd', name:'Jira · WD Board', sub:'atlassian', color:'#4f9cf9', icon:'jira',
+   keys:'jira wd board dashboard sprint atlassian issues software project'},
+  {id:'confluence', name:'Confluence · SPEC', sub:'atlassian', color:'#a78bfa', icon:'conf',
+   keys:'confluence spec space wiki specification docs overview pages'},
+  {id:'excel', name:'Sprint plan 2026', sub:'desktop app', color:'#f5a623', icon:'excel',
+   keys:'excel sprint plan 2026 sharepoint spreadsheet xlsx sheet desktop office'},
+  {id:'figma', name:'Figma · Drafts', sub:'browser', color:'#f472b6', icon:'figma',
+   keys:'figma drafts design prototype team files mockup ui'},
+  {id:'terminal', name:'Agentic Workflow', sub:'claude code', color:'#34d399', icon:'term',
+   keys:'terminal agentic workflow claude code desktop shell console cli'}
+];
+
+const stage = document.getElementById('stage');
+const web   = document.getElementById('web');
+const core  = document.getElementById('core');
+const sweep = document.getElementById('sweep');
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+/* ---- build ---- */
+const els = NODES.map(function(n, i){
+  const b = document.createElement('button');
+  b.className = 'node';
+  b.type = 'button';
+  b.style.setProperty('--nc', n.color);
+  b.dataset.id = n.id;
+  b.title = n.name;
+  b.innerHTML =
+    '<div class="hex"><span class="key">' + (i+1) + '</span>' +
+    '<svg viewBox="0 0 24 24">' + ICON[n.icon] + '</svg></div>' +
+    '<span class="label"><span class="t">' + n.name + '</span>' +
+    '<span class="s">' + n.sub + '</span></span>';
+  b.addEventListener('click', function(e){ launch(n.id, e.ctrlKey || e.metaKey); });
+  stage.appendChild(b);
+  return b;
+});
+
+const spokes = NODES.map(function(n){
+  const l = document.createElementNS(SVGNS, 'line');
+  l.setAttribute('class', 'spoke');
+  l.style.setProperty('--nc', n.color);
+  web.appendChild(l);
+  return l;
+});
+
+const rings = [0.17, 0.27, 0.37, 0.47].map(function(k){
+  const c = document.createElementNS(SVGNS, 'circle');
+  c.setAttribute('class', 'ring');
+  web.appendChild(c);
+  return {el:c, k:k};
+});
+
+/* ---- layout: circle sized off the shorter edge so rings stay round ---- */
+function colWidth(side){
+  const el = document.getElementById('col-' + side);
+  return el ? el.getBoundingClientRect().width : 0;
+}
+
+function layout(){
+  const w = stage.clientWidth, h = stage.clientHeight;
+  // keep the whole constellation clear of the HUD strip, the footer and the panel
+  const TOP = 58, BOT = 112;
+  const band = Math.max(h - TOP - BOT, 240);
+  const L = colWidth('left'), Rw = colWidth('right');
+  const free = Math.max(w - L - Rw, 280);
+  const cx = L + free / 2, cy = TOP + band / 2;
+  const S = Math.min(free * 0.92, band);
+  web.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+
+  rings.forEach(function(r){
+    r.el.setAttribute('cx', cx); r.el.setAttribute('cy', cy); r.el.setAttribute('r', S * r.k);
+  });
+
+  const sw = S * 0.94;
+  sweep.style.width = sw + 'px'; sweep.style.height = sw + 'px';
+  sweep.style.left = cx + 'px';  sweep.style.top = cy + 'px';
+
+  core.style.left = cx + 'px'; core.style.top = cy + 'px';
+
+  const R = S * 0.355, gapIn = S * 0.075, gapOut = S * 0.055;
+  NODES.forEach(function(n, i){
+    const a = -Math.PI / 2 + i * (2 * Math.PI / NODES.length);
+    const x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+    els[i].style.left = x + 'px'; els[i].style.top = y + 'px';
+    const s = spokes[i];
+    s.setAttribute('x1', cx + gapIn * Math.cos(a));
+    s.setAttribute('y1', cy + gapIn * Math.sin(a));
+    s.setAttribute('x2', x - gapOut * Math.cos(a));
+    s.setAttribute('y2', y - gapOut * Math.sin(a));
+  });
+}
+addEventListener('resize', layout);
+layout();
+
+/* ---- starfield ---- */
+const cv = document.getElementById('stars'), ctx = cv.getContext('2d');
+let stars = [];
+function seed(){
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+  cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const n = Math.round(innerWidth * innerHeight / 9000);
+  stars = [];
+  for(let i = 0; i < n; i++){
+    stars.push({
+      x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+      r: Math.random() * 1.15 + 0.25, a: Math.random() * 0.55 + 0.12,
+      sp: Math.random() * 0.9 + 0.25, ph: Math.random() * Math.PI * 2
+    });
+  }
+}
+function drawStars(t){
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  ctx.fillStyle = '#cdf2ff';
+  for(const s of stars){
+    ctx.globalAlpha = s.a * (0.6 + 0.4 * Math.sin(t / 1000 * s.sp + s.ph));
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.2832); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(drawStars);
+}
+addEventListener('resize', seed);
+seed();
+requestAnimationFrame(drawStars);
+
+/* ---- toast ---- */
+let toastTimer;
+function toast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2800);
+}
+
+/* ---- server ---- */
+/* ---- preview slots ----
+   Up to four previews at once: two stacked on the left, two on the right, the
+   constellation in between. Each slot is a reserved region; main.js parks the
+   target's real view over it, because none of them can be framed in a page. */
+const SLOTS = ['left-top', 'left-bottom', 'right-top', 'right-bottom'];
+/* The picker's 2x2 grid mirrors the screen, so its cards read left-to-right:
+   the two left slots in column one, the two right slots in column two. */
+const MENU_ORDER = ['left-top', 'right-top', 'left-bottom', 'right-bottom'];
+const SLOT_LABEL = { 'left-top':'Left top', 'left-bottom':'Left bottom',
+                     'right-top':'Right top', 'right-bottom':'Right bottom' };
+const slots = { 'left-top': null, 'left-bottom': null, 'right-top': null, 'right-bottom': null };
+const slotEls = {};                     // slot id -> its <section>
+
+function sideOf(slot){ return slot.indexOf('left') === 0 ? 'left' : 'right'; }
+function slotOf(nodeId){
+  return SLOTS.filter(function(s){ return slots[s] === nodeId; })[0] || null;
+}
+function anyOpen(){ return SLOTS.some(function(s){ return slots[s]; }); }
+
+function buildSlot(slot, node){
+  const sec = document.createElement('section');
+  sec.className = 'slot';
+  sec.dataset.slot = slot;
+  sec.style.setProperty('--nc', node.color);
+
+  const head = document.createElement('div');
+  head.className = 'phead';
+  const dot = document.createElement('span'); dot.className = 'dot';
+  const title = document.createElement('span'); title.className = 'ptitle'; title.textContent = node.name;
+  const sub = document.createElement('span'); sub.className = 'psub'; sub.textContent = node.sub;
+  const space = document.createElement('span'); space.className = 'pspace';
+  head.appendChild(dot); head.appendChild(title); head.appendChild(sub); head.appendChild(space);
+
+  [['reload','Reload','Reload this preview'],
+   ['pop','Pop out','Open outside the app'],
+   ['close','Close','Close this preview']].forEach(function(spec){
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.act = spec[0]; b.textContent = spec[1]; b.title = spec[2];
+    head.appendChild(b);
+  });
+
+  const body = document.createElement('div');
+  body.className = 'pbody';
+  const state = document.createElement('div');
+  state.className = 'pstate';
+  const ring = document.createElement('div'); ring.className = 'ring';
+  const msg = document.createElement('p'); msg.textContent = 'Opening ' + node.name + '…';
+  const hint = document.createElement('small');
+  hint.textContent = 'First time round you will need to sign in here — the app keeps its own session.';
+  state.appendChild(ring); state.appendChild(msg); state.appendChild(hint);
+  body.appendChild(state);
+
+  sec.appendChild(head); sec.appendChild(body);
+
+  head.querySelector('[data-act="close"]').addEventListener('click', function(){ clearSlot(slot); });
+  head.querySelector('[data-act="pop"]').addEventListener('click', function(){ launch(node.id, true); });
+  head.querySelector('[data-act="reload"]').addEventListener('click', function(){
+    sec.classList.remove('ready');
+    domain.reload({ id: node.id });
+  });
+  return sec;
+}
+
+/* Rebuild both columns from `slots`, reusing a slot's DOM when its node is unchanged. */
+function renderSlots(){
+  ['left', 'right'].forEach(function(side){
+    const col = document.getElementById('col-' + side);
+    const want = SLOTS.filter(function(s){ return sideOf(s) === side && slots[s]; });
+    col.textContent = '';
+    want.forEach(function(slot){
+      const node = NODES.find(function(n){ return n.id === slots[slot]; });
+      let el = slotEls[slot];
+      if(!el || el.dataset.node !== slots[slot]) el = buildSlot(slot, node);
+      el.dataset.node = slots[slot];
+      slotEls[slot] = el;
+      col.appendChild(el);
+    });
+    document.body.classList.toggle('has-' + side, want.length > 0);
+  });
+  SLOTS.forEach(function(s){ if(!slots[s]) delete slotEls[s]; });
+  reflowDuring(340);
+}
+
+function slotRects(){
+  const out = {};
+  SLOTS.forEach(function(s){
+    const el = slotEls[s];
+    if(!el || !slots[s]) return;
+    const r = el.querySelector('.pbody').getBoundingClientRect();
+    out[slots[s]] = { x: Math.round(r.left), y: Math.round(r.top),
+                      w: Math.round(r.width), h: Math.round(r.height) };
+  });
+  return out;
+}
+
+function pushRect(){ domain.rects(slotRects()); }
+
+/* the columns animate their width, so re-run layout and re-send rects each frame */
+let reflowUntil = 0, reflowing = false;
+function reflowDuring(ms){
+  reflowUntil = Math.max(reflowUntil, performance.now() + ms);
+  if(reflowing) return;
+  reflowing = true;
+  (function step(){
+    layout();
+    pushRect();
+    if(performance.now() < reflowUntil){ requestAnimationFrame(step); }
+    else { reflowing = false; layout(); pushRect(); }
+  })();
+}
+
+function pstate(nodeId, state, message){
+  const slot = slotOf(nodeId);
+  if(!slot || !slotEls[slot]) return;
+  const el = slotEls[slot];
+  if(state === 'ready'){ el.classList.add('ready'); return; }
+  el.classList.remove('ready');
+  const p = el.querySelector('.pstate p'), ring = el.querySelector('.ring');
+  if(state === 'error'){
+    ring.style.display = 'none';
+    p.textContent = message || 'This one would not open.';
+  }else{
+    ring.style.display = '';
+  }
+}
+
+/* Put a node in a slot. A view can only be in one place, so if it is already
+   open elsewhere it moves rather than opening twice. */
+async function place(nodeId, slot){
+  const was = slotOf(nodeId);
+  if(was && was !== slot) slots[was] = null;
+  const evicted = slots[slot];
+  if(evicted && evicted !== nodeId) await domain.close({ id: evicted });
+  slots[slot] = nodeId;
+  renderSlots();
+  await new Promise(function(done){ setTimeout(done, 360); });
+  const res = await domain.preview({ id: nodeId, rect: slotRects()[nodeId] });
+  pstate(nodeId, res.state, res.message);
+  remember(nodeId);
+}
+
+function clearSlot(slot){
+  const id = slots[slot];
+  if(!id) return;
+  slots[slot] = null;
+  renderSlots();
+  domain.close({ id: id });
+}
+
+function clearAll(){
+  const ids = SLOTS.map(function(s){ return slots[s]; }).filter(Boolean);
+  SLOTS.forEach(function(s){ slots[s] = null; });
+  renderSlots();
+  ids.forEach(function(id){ domain.close({ id: id }); });
+}
+
+/* Where a plain click sends a preview: its existing slot, else the first free
+   one working right-to-left, else replace the right-top. */
+function defaultSlot(nodeId){
+  const mine = slotOf(nodeId);
+  if(mine) return mine;
+  const order = ['right-top', 'right-bottom', 'left-top', 'left-bottom'];
+  for(let i = 0; i < order.length; i++) if(!slots[order[i]]) return order[i];
+  return 'right-top';
+}
+
+/* ---- resizable columns ----
+   A preview composites above the page, so the moment the cursor crosses onto
+   one it stops sending pointermove here and the drag dies. The views are
+   therefore lifted off for the duration of the drag and put back on release -
+   the columns keep resizing, they just show their own background while you
+   drag. */
+const MIN_COL = 280;      // narrower than this and the slot headers break up
+const MIN_MID = 320;      // always leave this much constellation between them
+const DEFAULT_COL = 380;
+
+function readWidths(){
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('domain.cols') || '{}'); } catch (e) { saved = {}; }
+  return {
+    left:  Number(saved.left)  || DEFAULT_COL,
+    right: Number(saved.right) || DEFAULT_COL,
+  };
+}
+
+function widthOf(side){
+  const v = parseFloat(getComputedStyle(document.body).getPropertyValue('--cw-' + side));
+  return Number.isFinite(v) ? v : DEFAULT_COL;
+}
+
+/* The cap depends on whether the other column is open, so a resize can never
+   squeeze the middle away. */
+function maxWidth(side){
+  const other = side === 'left' ? 'right' : 'left';
+  const otherW = document.body.classList.contains('has-' + other) ? widthOf(other) : 0;
+  return Math.max(MIN_COL, innerWidth - otherW - MIN_MID);
+}
+
+function setWidth(side, px){
+  const w = Math.round(Math.min(Math.max(px, MIN_COL), maxWidth(side)));
+  document.body.style.setProperty('--cw-' + side, w + 'px');
+  return w;
+}
+
+function saveWidths(){
+  try {
+    localStorage.setItem('domain.cols',
+      JSON.stringify({ left: widthOf('left'), right: widthOf('right') }));
+  } catch (e) { /* private window, or storage disabled */ }
+}
+
+(function initWidths(){
+  const w = readWidths();
+  setWidth('left', w.left);
+  setWidth('right', w.right);
+})();
+
+['left', 'right'].forEach(function(side){
+  const grip = document.getElementById('grip-' + side);
+
+  grip.addEventListener('pointerdown', function(e){
+    if(e.button !== 0) return;
+    e.preventDefault();
+    grip.setPointerCapture(e.pointerId);
+    document.body.classList.add('dragging');
+    domain.freeze({ on: true });          // lift the views so they cannot eat the drag
+
+    const startX = e.clientX;
+    const startW = widthOf(side);
+
+    function move(ev){
+      const delta = side === 'left' ? (ev.clientX - startX) : (startX - ev.clientX);
+      setWidth(side, startW + delta);
+      layout();
+    }
+    function up(ev){
+      grip.releasePointerCapture(e.pointerId);
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      grip.removeEventListener('pointercancel', up);
+      document.body.classList.remove('dragging');
+      layout();
+      pushRect();                          // the views need the new rects first
+      domain.freeze({ on: false });
+      saveWidths();
+    }
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+    grip.addEventListener('pointercancel', up);
+  });
+
+  grip.addEventListener('dblclick', function(){
+    setWidth(side, DEFAULT_COL);
+    layout(); pushRect(); saveWidths();
+  });
+
+  // keyboard: the grip is a focusable separator, so arrows should move it
+  grip.addEventListener('keydown', function(e){
+    const step = e.shiftKey ? 40 : 12;
+    if(e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const dir = e.key === 'ArrowRight' ? 1 : -1;
+    setWidth(side, widthOf(side) + (side === 'left' ? dir * step : -dir * step));
+    layout(); pushRect(); saveWidths();
+  });
+});
+
+/* A window that shrinks can leave a saved width wider than the space available. */
+addEventListener('resize', function(){
+  setWidth('left', widthOf('left'));
+  setWidth('right', widthOf('right'));
+});
+
+/* ---- placement menu ---- */
+const menuBox = document.getElementById('menu');
+let menuNode = null;
+
+function iconFor(node){
+  const wrap = document.createElement('span');
+  wrap.className = 'cicon';
+  wrap.style.setProperty('--cc', node.color);
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.innerHTML = ICON[node.icon];
+  wrap.appendChild(svg);
+  return wrap;
+}
+
+/* a 3x2 diagram of the window with this slot lit up */
+function slotMap(slot){
+  const map = document.createElement('span');
+  map.className = 'cmap';
+  [['left-top', ''], ['mid', 'mid'], ['right-top', ''],
+   ['left-bottom', ''], ['right-bottom', '']].forEach(function(pair){
+    const i = document.createElement('i');
+    if(pair[1]) i.className = 'mid';
+    if(pair[0] === slot) i.className = 'on';
+    map.appendChild(i);
+  });
+  return map;
+}
+
+async function openMenu(node, x, y){
+  menuNode = node;
+  menuBox.style.setProperty('--nc', node.color);
+  menuBox.querySelector('.mtitle').textContent = node.name;
+  menuBox.querySelector('.msub').textContent = slotOf(node.id) ? 'move preview' : 'place preview';
+
+  const grid = document.getElementById('mgrid');
+  grid.textContent = '';
+  let thumbs = {};
+  try { thumbs = await domain.thumbs(); } catch (e) { thumbs = {}; }
+
+  MENU_ORDER.forEach(function(slot){
+    const holder = slots[slot];
+    const held = holder ? NODES.find(function(n){ return n.id === holder; }) : null;
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'mcard';
+    card.dataset.occupied = held ? '1' : '0';
+    card.setAttribute('role', 'menuitem');
+
+    const head = document.createElement('span');
+    head.className = 'ch';
+    head.appendChild(iconFor(held || node));
+    const name = document.createElement('span');
+    name.className = 'cname';
+    name.textContent = held ? held.name : 'Empty';
+    head.appendChild(name);
+    const pos = document.createElement('span');
+    pos.className = 'cpos';
+    pos.textContent = SLOT_LABEL[slot];
+    head.appendChild(pos);
+    card.appendChild(head);
+
+    const thumb = document.createElement('span');
+    thumb.className = 'cthumb';
+    if(held && thumbs[held.id]){
+      const img = document.createElement('img');
+      img.src = thumbs[held.id];
+      img.alt = '';
+      thumb.appendChild(img);
+    }else{
+      thumb.appendChild(slotMap(slot));
+    }
+    card.appendChild(thumb);
+
+    card.title = held
+      ? 'Replace ' + held.name + ' with ' + node.name
+      : 'Show ' + node.name + ' here';
+    card.addEventListener('click', function(){ closeMenu(); place(node.id, slot); });
+    grid.appendChild(card);
+  });
+
+  document.getElementById('m-clear').hidden = !anyOpen();
+  menuBox.hidden = false;
+
+  /* Previews composite ABOVE the page, so a menu straying over a column would
+     be drawn underneath one. Keep it inside the free middle strip. */
+  const r = menuBox.getBoundingClientRect();
+  const L = colWidth('left'), Rw = colWidth('right');
+  const minX = L + 8, maxX = innerWidth - Rw - r.width - 8;
+  menuBox.style.left = (maxX < minX ? Math.max(8, (innerWidth - r.width) / 2)
+                                    : Math.min(Math.max(minX, x), maxX)) + 'px';
+  menuBox.style.top = Math.min(Math.max(8, y), innerHeight - r.height - 8) + 'px';
+  const first = grid.querySelector('.mcard');
+  if(first) first.focus();
+}
+
+function closeMenu(){ menuBox.hidden = true; menuNode = null; }
+
+/* Right-click a node to choose where it opens; right-click the empty space to
+   clear the board. The previews are separate views stacked on top, so a
+   right-click only reaches this page when it lands outside them. */
+addEventListener('contextmenu', function(e){
+  const onNode = e.target.closest && e.target.closest('.node');
+  if(onNode){
+    e.preventDefault();
+    const node = NODES.find(function(n){ return n.id === onNode.dataset.id; });
+    if(node) openMenu(node, e.clientX, e.clientY);
+    return;
+  }
+  if(e.target.closest && e.target.closest('.col, #help, .menu')) return;
+  if(!menuBox.hidden){ e.preventDefault(); closeMenu(); return; }
+  if(!anyOpen()) return;
+  e.preventDefault();
+  clearAll();
+});
+
+/* a left-click anywhere outside dismisses the menu */
+addEventListener('mousedown', function(e){
+  if(menuBox.hidden) return;
+  const t = (e.target instanceof Node) ? e.target : null;
+  if(!t || !menuBox.contains(t)) closeMenu();
+});
+
+document.getElementById('m-pop').addEventListener('click', function(){
+  const n = menuNode; closeMenu(); if(n) launch(n.id, true);
+});
+document.getElementById('m-clear').addEventListener('click', function(){ closeMenu(); clearAll(); });
+
+/* ---- launch ---- */
+let busy = false;
+async function launch(id, separate, slot){
+  if(busy) return;
+  const i = NODES.findIndex(function(n){ return n.id === id; });
+  if(i < 0) return;
+  const node = NODES[i];
+  busy = true;
+  els[i].classList.add('hit');
+  spokes[i].classList.add('on');
+  setTimeout(function(){
+    els[i].classList.remove('hit');
+    spokes[i].classList.remove('on');
+  }, 950);
+
+  try{
+    if(separate){
+      const res = await domain.external({ id: id });
+      if(!res.ok) throw new Error(res.error || 'could not open it');
+      toast(node.name + ' — opened outside the app');
+      remember(id);
+    }else{
+      await place(id, slot || defaultSlot(id));
+    }
+  }catch(err){
+    toast(node.name + ' failed — ' + err.message, true);
+  }finally{
+    setTimeout(function(){ busy = false; }, 400);
+  }
+}
+
+/* main tells us when a preview finished loading, failed, or went away */
+domain.onState(function(p){
+  if(p.state === 'closed'){
+    const slot = slotOf(p.id);
+    if(slot){ slots[slot] = null; renderSlots(); }
+    return;
+  }
+  pstate(p.id, p.state, p.message);
+});
+
+addEventListener('resize', function(){ layout(); pushRect(); });
+
+/* ---- recents ---- */
+function readLog(){
+  try { return JSON.parse(localStorage.getItem('domain.recent') || '[]'); }
+  catch(e){ return []; }
+}
+function remember(id){
+  const log = readLog().filter(function(r){ return r.id !== id; });
+  log.unshift({id: id, at: Date.now()});
+  try { localStorage.setItem('domain.recent', JSON.stringify(log.slice(0, 3))); } catch(e){}
+  paintRecent();
+}
+function ago(ms){
+  const s = Math.round((Date.now() - ms) / 1000);
+  if(s < 60) return 'just now';
+  if(s < 3600) return Math.floor(s / 60) + 'm ago';
+  if(s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+function paintRecent(){
+  const host = document.getElementById('recent');
+  const log = readLog();
+  if(!log.length){ host.innerHTML = '<span class="empty">no recent launches</span>'; return; }
+  host.innerHTML = '';
+  log.forEach(function(r){
+    const n = NODES.find(function(x){ return x.id === r.id; });
+    if(!n) return;
+    const b = document.createElement('button');
+    b.className = 'rcard'; b.type = 'button';
+    b.style.setProperty('--nc', n.color);
+    b.innerHTML = '<span class="rt">' + n.name + '</span><span class="rs">' + ago(r.at) + '</span>';
+    b.addEventListener('click', function(e){ launch(n.id, e.ctrlKey || e.metaKey); });
+    host.appendChild(b);
+  });
+}
+paintRecent();
+setInterval(paintRecent, 60000);
+
+/* ---- search ---- */
+const q = document.getElementById('q');
+function score(n, term){
+  if(!term) return 0;
+  const hay = (n.name + ' ' + n.sub + ' ' + n.keys).toLowerCase();
+  if(n.name.toLowerCase().indexOf(term) === 0) return 3;
+  return hay.indexOf(term) >= 0 ? 1 : -1;
+}
+function filter(){
+  const term = q.value.trim().toLowerCase();
+  NODES.forEach(function(n, i){ els[i].classList.toggle('dim', term ? score(n, term) < 0 : false); });
+}
+q.addEventListener('input', filter);
+q.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){ e.stopPropagation(); closeHelp(); return; }
+  if(e.key !== 'Enter') return;
+  const term = q.value.trim().toLowerCase();
+  const hits = NODES.map(function(n){ return {n: n, s: score(n, term)}; })
+                    .filter(function(x){ return x.s > 0; })
+                    .sort(function(a, b){ return b.s - a.s; });
+  if(hits.length){ launch(hits[0].n.id, e.ctrlKey || e.metaKey); closeHelp(); }
+  else toast('No node matches "' + q.value.trim() + '"', true);
+});
+
+/* ---- help popover: search plus the shortcut reference ---- */
+const helpBox = document.getElementById('help');
+const helpBtn = document.getElementById('helpbtn');
+
+function openHelp(){
+  helpBox.hidden = false;
+  helpBtn.setAttribute('aria-expanded', 'true');
+  q.focus();
+  q.select();
+}
+function closeHelp(){
+  if(helpBox.hidden) return;
+  helpBox.hidden = true;
+  helpBtn.setAttribute('aria-expanded', 'false');
+  q.value = '';
+  filter();                       // undim whatever the search was hiding
+  q.blur();
+}
+function toggleHelp(){ helpBox.hidden ? openHelp() : closeHelp(); }
+
+helpBtn.addEventListener('click', function(e){ e.stopPropagation(); toggleHelp(); });
+addEventListener('mousedown', function(e){
+  if(helpBox.hidden) return;
+  // guard the target: contains() throws on anything that is not a Node
+  const t = (e.target instanceof Node) ? e.target : null;
+  if(!t || (!helpBox.contains(t) && t !== helpBtn)) closeHelp();
+});
+
+/* ---- keyboard ---- */
+addEventListener('keydown', function(e){
+  if(e.key === 'Escape' && !menuBox.hidden){ closeMenu(); return; }
+  if(e.key === 'Escape' && !helpBox.hidden){ closeHelp(); return; }
+  if(e.key === 'Escape' && anyOpen()){
+    const last = ['right-bottom','right-top','left-bottom','left-top'].filter(function(x){ return slots[x]; })[0];
+    if(last) clearSlot(last);
+    return;
+  }
+  if(e.target === q) return;
+  if(e.key === '/'){ e.preventDefault(); openHelp(); return; }
+  const n = parseInt(e.key, 10);
+  if(n >= 1 && n <= NODES.length) launch(NODES[n - 1].id, e.ctrlKey || e.metaKey);
+});
+
+/* ---- clock + heartbeat ---- */
+const MON = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function tick(){
+  const d = new Date();
+  document.getElementById('d-day').textContent = String(d.getDate()).padStart(2, '0');
+  document.getElementById('d-mon').textContent = MON[d.getMonth()];
+  document.getElementById('clock').textContent =
+    String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+tick();
+setInterval(tick, 20000);
+
+
+</script>
+</body>
+</html>

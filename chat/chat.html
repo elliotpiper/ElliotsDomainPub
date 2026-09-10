@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:; frame-src 'none'; object-src 'none'; connect-src 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agentic Workflow</title>
+<link rel="stylesheet" href="chat.css">
+</head>
+<body>
+
+<a class="skip" href="#ag-in">Skip to the message box</a>
+
+<header class="bar">
+  <button id="s-title" class="title" aria-haspopup="dialog" aria-expanded="false">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="s-title-t">New conversation</span>
+    <span class="caret" aria-hidden="true">▾</span>
+  </button>
+  <span id="s-status" class="status" hidden></span>
+  <button id="s-flags" class="flags" hidden title="Rules allowed for this conversation">⚑ <b>0</b></button>
+  <button id="s-new" class="newc" title="New conversation">＋</button>
+</header>
+
+<div id="sticky" class="sticky" hidden></div>
+
+<main id="scroll" class="scroll" tabindex="-1">
+  <div id="feed" class="feed"></div>
+</main>
+
+<button id="jump" class="jump" hidden>↓ <span id="jump-n">0</span> new</button>
+
+<footer class="dock">
+  <div id="nudge" class="nudge" hidden></div>
+  <div id="queued" class="queued" hidden></div>
+  <form id="composer" class="composer">
+    <button type="button" id="c-slash" class="c-slash" aria-label="Shortcuts" title="Shortcuts">/</button>
+    <textarea id="ag-in" rows="1" spellcheck="false" autocomplete="off"
+              placeholder="Ask Claude, or press / for a command"></textarea>
+    <button type="submit" id="c-send" class="c-send" aria-label="Send">↵</button>
+  </form>
+</footer>
+
+<div id="drawer" class="drawer" hidden role="dialog" aria-modal="true" aria-label="Conversations">
+  <div class="dr-panel">
+    <div class="dr-head">
+      <b>Conversations</b>
+      <button id="dr-close" aria-label="Close">✕</button>
+    </div>
+    <button id="dr-new" class="dr-new">＋ New conversation</button>
+    <div id="dr-list" class="dr-list"></div>
+  </div>
+  <div class="dr-scrim" id="dr-scrim"></div>
+</div>
+
+<div id="slashmenu" class="slashmenu" hidden role="listbox" aria-label="Shortcuts"></div>
+
+<div id="live" class="sr" role="status" aria-live="polite"></div>
+<div id="alert" class="sr" role="alert" aria-live="assertive"></div>
+
+<script src="markdown.js"></script>
+<script src="chat.js"></script>
+</body>
+</html>
